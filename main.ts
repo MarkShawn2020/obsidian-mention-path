@@ -33,10 +33,19 @@ interface SuggestionItem {
 class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	private plugin: MentionPlugin;
 	private currentFile: TFile | null = null;
+	private preventClose: boolean = false;
 
 	constructor(plugin: MentionPlugin) {
 		super(plugin.app);
 		this.plugin = plugin;
+	}
+
+	close(): void {
+		if (this.preventClose) {
+			this.preventClose = false;
+			return;
+		}
+		super.close();
 	}
 
 	onTrigger(
@@ -64,6 +73,7 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 
 	getSuggestions(context: EditorSuggestContext): SuggestionItem[] {
 		const query = context.query;
+
 		if (query.startsWith(" ")) return [];
 		if (!this.currentFile) return [];
 
@@ -71,14 +81,45 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 		if (!currentFolder) return [];
 
 		// 解析查询路径
-		const { targetFolder, searchName } = this.parseQueryPath(query, currentFolder);
+		const { targetFolder, searchName, hasPathNavigation } = this.parseQueryPath(query, currentFolder);
+
 		if (!targetFolder) return [];
 
-		return this.getItemsInFolder(targetFolder, searchName, query, currentFolder);
+		// 获取当前文件夹的直接子项
+		const directItems = this.getItemsInFolder(targetFolder, searchName, query);
+
+		// 如果没有路径导航（即没有 /），则递归搜索子目录
+		let recursiveItems: SuggestionItem[] = [];
+		if (!hasPathNavigation && searchName.length > 0) {
+			recursiveItems = this.getItemsRecursively(targetFolder, searchName, "");
+		}
+
+		// 合并结果，去重（直接子项优先）
+		const seen = new Set(directItems.map(i => i.insertPath));
+		const allItems = [
+			...directItems,
+			...recursiveItems.filter(i => !seen.has(i.insertPath))
+		];
+
+		// 排序：文件夹优先，然后按路径深度，然后按名称
+		allItems.sort((a, b) => {
+			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+			const depthA = (a.insertPath.match(/\//g) || []).length;
+			const depthB = (b.insertPath.match(/\//g) || []).length;
+			if (depthA !== depthB) return depthA - depthB;
+			return a.displayPath.localeCompare(b.displayPath);
+		});
+
+		return allItems.slice(0, 50); // 限制结果数量
 	}
 
-	private parseQueryPath(query: string, baseFolder: TFolder): { targetFolder: TFolder | null; searchName: string } {
+	private parseQueryPath(query: string, baseFolder: TFolder): {
+		targetFolder: TFolder | null;
+		searchName: string;
+		hasPathNavigation: boolean;
+	} {
 		let targetFolder: TFolder | null = baseFolder;
+		const hasPathNavigation = query.contains("/");
 
 		const parts = query.split("/");
 		const searchName = parts.pop() || "";
@@ -103,24 +144,23 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			}
 		}
 
-		return { targetFolder, searchName };
+		return { targetFolder, searchName, hasPathNavigation };
 	}
 
 	private getItemsInFolder(
 		folder: TFolder,
 		searchName: string,
-		fullQuery: string,
-		baseFolder: TFolder
+		fullQuery: string
 	): SuggestionItem[] {
 		const items: SuggestionItem[] = [];
 		const lowerSearch = searchName.toLowerCase();
 
-		// 计算从 baseFolder 到 folder 的相对路径前缀
+		// 计算路径前缀
 		const pathPrefix = fullQuery.substring(0, fullQuery.lastIndexOf("/") + 1);
 
 		for (const child of folder.children) {
 			const name = child.name;
-			if (!name.toLowerCase().contains(lowerSearch)) continue;
+			if (lowerSearch && !name.toLowerCase().contains(lowerSearch)) continue;
 
 			const isFolder = child instanceof TFolder;
 			const displayName = isFolder ? name + "/" : name;
@@ -133,11 +173,42 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			});
 		}
 
-		// 文件夹优先，然后按名称排序
-		items.sort((a, b) => {
-			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
-			return a.displayPath.localeCompare(b.displayPath);
-		});
+		return items;
+	}
+
+	private getItemsRecursively(
+		folder: TFolder,
+		searchName: string,
+		pathPrefix: string
+	): SuggestionItem[] {
+		const items: SuggestionItem[] = [];
+		const lowerSearch = searchName.toLowerCase();
+
+		for (const child of folder.children) {
+			const name = child.name;
+			const isFolder = child instanceof TFolder;
+			const relativePath = pathPrefix ? pathPrefix + "/" + name : name;
+
+			// 如果名称匹配搜索词，添加到结果
+			if (name.toLowerCase().contains(lowerSearch)) {
+				items.push({
+					file: child,
+					displayPath: relativePath + (isFolder ? "/" : ""),
+					insertPath: relativePath + (isFolder ? "/" : ""),
+					isFolder: isFolder,
+				});
+			}
+
+			// 如果是文件夹，递归搜索
+			if (isFolder) {
+				const subItems = this.getItemsRecursively(
+					child as TFolder,
+					searchName,
+					relativePath
+				);
+				items.push(...subItems);
+			}
+		}
 
 		return items;
 	}
@@ -145,21 +216,44 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	selectSuggestion(item: SuggestionItem, evt: MouseEvent | KeyboardEvent): void {
 		if (!this.context) return;
 
+		const editor = this.context.editor;
+		const start = this.context.start;
+		const end = this.context.end;
+
 		if (item.isFolder) {
-			// 文件夹：替换为路径，继续输入
-			const newQuery = this.plugin.settings.trigger + item.insertPath;
-			this.context.editor.replaceRange(
-				newQuery,
-				this.context.start,
-				this.context.end
-			);
+			// 文件夹：阻止关闭，替换为路径，然后刷新建议
+			this.preventClose = true;
+
+			const newText = this.plugin.settings.trigger + item.insertPath;
+			editor.replaceRange(newText, start, end);
+
+			// 设置光标位置到新文本末尾
+			const newCursorPos = {
+				line: start.line,
+				ch: start.ch + newText.length
+			};
+			editor.setCursor(newCursorPos);
+
+			// 更新 context
+			const newQuery = item.insertPath;
+			this.context = {
+				...this.context,
+				start: start,
+				end: newCursorPos,
+				query: newQuery
+			};
+
+			// 刷新建议列表
+			const self = this as any;
+			if (self.suggestions) {
+				const newItems = this.getSuggestions(this.context);
+				if (typeof self.suggestions.setSuggestions === 'function') {
+					self.suggestions.setSuggestions(newItems);
+				}
+			}
 		} else {
 			// 文件：插入相对路径，完成
-			this.context.editor.replaceRange(
-				item.insertPath,
-				this.context.start,
-				this.context.end
-			);
+			editor.replaceRange(item.insertPath, start, end);
 			this.close();
 		}
 	}
