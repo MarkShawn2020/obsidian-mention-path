@@ -61,7 +61,22 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			return null;
 		}
 
-		const queryStart = currentLine.lastIndexOf(trigger);
+		// 找到有效的触发位置（前面是空白或行首）
+		let queryStart = -1;
+		for (let i = currentLine.length - 1; i >= 0; i--) {
+			if (currentLine[i] === trigger) {
+				// 检查前面是否是空白或行首
+				if (i === 0 || /\s/.test(currentLine[i - 1])) {
+					queryStart = i;
+					break;
+				}
+			}
+		}
+
+		if (queryStart === -1) {
+			return null;
+		}
+
 		const query = currentLine.slice(queryStart + 1);
 
 		return {
@@ -173,8 +188,8 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 		const vaultRoot = this.plugin.app.vault.getRoot();
 		const isAtRoot = folder.path === "" || folder.path === "/";
 
-		// 添加根目录选项（如果不在根目录且搜索词匹配）
-		if (!isAtRoot && (!lowerSearch || "~".contains(lowerSearch))) {
+		// 添加根目录选项（仅在输入为空时显示）
+		if (!isAtRoot && !lowerSearch && !pathPrefix) {
 			items.push({
 				file: vaultRoot,
 				displayPath: "~/",
@@ -183,12 +198,31 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			});
 		}
 
-		// 添加父目录选项（如果有父目录且搜索词匹配）
-		if (folder.parent && (!lowerSearch || "..".contains(lowerSearch))) {
+		// 添加父目录选项（始终显示，计算回退路径）
+		if (folder.parent) {
+			let parentPath: string;
+			if (pathPrefix) {
+				// 有路径前缀：移除最后一个目录段
+				const startsWithRoot = pathPrefix.startsWith("~/");
+				const workingPrefix = startsWithRoot ? pathPrefix.slice(2) : pathPrefix;
+				const segments = workingPrefix.split("/").filter(s => s && s !== "..");
+				segments.pop();
+
+				if (startsWithRoot) {
+					// 保留 ~/ 前缀
+					parentPath = segments.length > 0 ? "~/" + segments.join("/") + "/" : "~/";
+				} else {
+					parentPath = segments.length > 0 ? segments.join("/") + "/" : "";
+				}
+			} else {
+				// 无路径前缀：使用 ../ 导航到父目录
+				parentPath = "../";
+			}
+
 			items.push({
 				file: folder.parent,
 				displayPath: "../",
-				insertPath: pathPrefix + "../",
+				insertPath: parentPath,
 				isFolder: true,
 			});
 		}
