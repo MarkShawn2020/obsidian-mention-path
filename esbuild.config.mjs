@@ -16,8 +16,9 @@ const outdir = "dist";
 // Ensure dist directory exists
 mkdirSync(outdir, { recursive: true });
 
-// Copy manifest.json to dist
+// Copy manifest.json and styles.css to dist
 cpSync("manifest.json", `${outdir}/manifest.json`);
+cpSync("styles.css", `${outdir}/styles.css`);
 
 const context = await esbuild.context({
 	banner: {
