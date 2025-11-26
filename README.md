@@ -6,10 +6,29 @@ Quickly insert relative file and folder paths while writing in Obsidian using a 
 
 ## Features
 
-- Type `@` to trigger autocomplete suggestions for files and folders
-- Navigate directories with `../` (parent) and `./` (current)
-- Folder-first sorting for easy navigation
-- Configurable trigger character
+### 1. Trigger-based Autocomplete
+Type `@` (or your custom trigger) to instantly activate file/folder suggestions. The trigger only activates after whitespace or at line start, preventing false triggers mid-word.
+
+### 2. Parent Directory Navigation (`../`)
+Use `../` to navigate up to parent directories. Supports chaining like `../../` for multi-level navigation.
+
+### 3. Vault Root Quick Access (`~/`)
+Type `~/` to jump directly to your vault root, then browse from there.
+
+### 4. Folder Drill-down
+Selecting a folder doesn't close the popup—it navigates into that folder, allowing continuous browsing until you find the target file.
+
+### 5. Recursive Search
+When typing a search term without path separators, the plugin searches recursively through all subdirectories, showing matches with their relative paths.
+
+### 6. Smart Sorting
+Results are sorted intelligently: special directories (`~/`, `../`) first, then folders, then files—all alphabetically within each group. Shallower paths appear before deeper ones.
+
+### 7. Relative Path Insertion
+Selected files are inserted as relative paths from your current file's location, making links portable and refactor-friendly.
+
+### 8. Customizable Trigger Character
+Change the default `@` trigger to any single character you prefer in settings.
 
 ## Usage
 
