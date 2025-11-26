@@ -34,6 +34,7 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	private plugin: MentionPlugin;
 	private currentFile: TFile | null = null;
 	private preventClose: boolean = false;
+	private savedContext: EditorSuggestContext | null = null;
 
 	constructor(plugin: MentionPlugin) {
 		super(plugin.app);
@@ -45,6 +46,7 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			this.preventClose = false;
 			return;
 		}
+		this.savedContext = null;
 		super.close();
 	}
 
@@ -78,6 +80,7 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 		}
 
 		const query = currentLine.slice(queryStart + 1);
+		console.log("[MentionPath] onTrigger returning query:", query);
 
 		return {
 			start: { ...cursor, ch: queryStart },
@@ -88,8 +91,8 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 
 	getSuggestions(context: EditorSuggestContext): SuggestionItem[] {
 		const query = context.query;
+		console.log("[MentionPath] getSuggestions called, query:", query);
 
-		if (query.startsWith(" ")) return [];
 		if (!this.currentFile) return [];
 
 		const currentFolder = this.currentFile.parent;
@@ -98,7 +101,13 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 		// 解析查询路径
 		const { targetFolder, searchName, hasPathNavigation } = this.parseQueryPath(query, currentFolder);
 
-		if (!targetFolder) return [];
+		// 路径无效，退出候选模式
+		if (!targetFolder) {
+			this.savedContext = null;
+			this.preventClose = false;
+			this.close();
+			return [];
+		}
 
 		// 获取当前文件夹的直接子项
 		const directItems = this.getItemsInFolder(targetFolder, searchName, query);
@@ -115,6 +124,23 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			...directItems,
 			...recursiveItems.filter(i => !seen.has(i.insertPath))
 		];
+
+		// 检查是否有实际匹配（排除 ../ 和 ~/）
+		const hasRealMatches = allItems.some(item =>
+			item.displayPath !== "../" && item.displayPath !== "~/"
+		);
+
+		// 没有实际匹配结果时退出候选模式：
+		// 1. 有搜索词但没匹配
+		// 2. 路径已确定（以 / 结尾）但文件夹为空
+		const pathConfirmed = query.endsWith("/");
+		if (!hasRealMatches && (searchName.length > 0 || pathConfirmed)) {
+			console.log("[MentionPath] no real matches, closing. searchName:", searchName, "pathConfirmed:", pathConfirmed);
+			this.savedContext = null;
+			this.preventClose = false;
+			this.close();
+			return [];
+		}
 
 		// 排序：特殊目录优先，文件夹优先，然后按路径深度，然后按名称
 		allItems.sort((a, b) => {
@@ -283,11 +309,13 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	}
 
 	selectSuggestion(item: SuggestionItem, evt: MouseEvent | KeyboardEvent): void {
-		if (!this.context) return;
+		// 使用 savedContext 作为备份（当 context 被 Obsidian 置空时）
+		const ctx = this.context || this.savedContext;
+		if (!ctx) return;
 
-		const editor = this.context.editor;
-		const start = this.context.start;
-		const end = this.context.end;
+		const editor = ctx.editor;
+		const start = ctx.start;
+		const end = ctx.end;
 
 		if (item.isFolder) {
 			// 文件夹：阻止关闭，替换为路径，然后刷新建议
@@ -303,26 +331,29 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			};
 			editor.setCursor(newCursorPos);
 
-			// 更新 context
+			// 更新并保存 context
 			const newQuery = item.insertPath;
-			this.context = {
-				...this.context,
+			const newContext = {
+				...ctx,
 				start: start,
 				end: newCursorPos,
 				query: newQuery
 			};
+			this.savedContext = newContext;
 
 			// 刷新建议列表
 			const self = this as any;
 			if (self.suggestions) {
-				const newItems = this.getSuggestions(this.context);
+				const newItems = this.getSuggestions(newContext);
 				if (typeof self.suggestions.setSuggestions === 'function') {
 					self.suggestions.setSuggestions(newItems);
 				}
 			}
 		} else {
-			// 文件：插入相对路径，完成
-			editor.replaceRange(item.insertPath, start, end);
+			// 文件：插入带触发符的相对路径，完成
+			const newText = this.plugin.settings.trigger + item.insertPath;
+			editor.replaceRange(newText, start, end);
+			this.savedContext = null;
 			this.close();
 		}
 	}
