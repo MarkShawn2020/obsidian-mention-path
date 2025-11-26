@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { cpSync, mkdirSync } from "fs";
 
 const banner =
 `/*
@@ -10,6 +11,13 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const outdir = "dist";
+
+// Ensure dist directory exists
+mkdirSync(outdir, { recursive: true });
+
+// Copy manifest.json to dist
+cpSync("manifest.json", `${outdir}/manifest.json`);
 
 const context = await esbuild.context({
 	banner: {
@@ -37,7 +45,7 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: `${outdir}/main.js`,
 	minify: prod,
 });
 
