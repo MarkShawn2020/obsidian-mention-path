@@ -101,8 +101,17 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			...recursiveItems.filter(i => !seen.has(i.insertPath))
 		];
 
-		// 排序：文件夹优先，然后按路径深度，然后按名称
+		// 排序：特殊目录优先，文件夹优先，然后按路径深度，然后按名称
 		allItems.sort((a, b) => {
+			// ~/ 和 ../ 排在最前面
+			const aIsRoot = a.displayPath === "~/";
+			const bIsRoot = b.displayPath === "~/";
+			if (aIsRoot !== bIsRoot) return aIsRoot ? -1 : 1;
+
+			const aIsParent = a.displayPath === "../";
+			const bIsParent = b.displayPath === "../";
+			if (aIsParent !== bIsParent) return aIsParent ? -1 : 1;
+
 			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
 			const depthA = (a.insertPath.match(/\//g) || []).length;
 			const depthB = (b.insertPath.match(/\//g) || []).length;
@@ -124,10 +133,14 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 		const parts = query.split("/");
 		const searchName = parts.pop() || "";
 
-		for (const part of parts) {
+		for (let i = 0; i < parts.length; i++) {
+			const part = parts[i];
 			if (!targetFolder) break;
 
-			if (part === "..") {
+			if (part === "~") {
+				// vault 根目录
+				targetFolder = this.plugin.app.vault.getRoot();
+			} else if (part === "..") {
 				targetFolder = targetFolder.parent;
 			} else if (part === ".") {
 				// 当前目录，不变
@@ -157,6 +170,28 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 
 		// 计算路径前缀
 		const pathPrefix = fullQuery.substring(0, fullQuery.lastIndexOf("/") + 1);
+		const vaultRoot = this.plugin.app.vault.getRoot();
+		const isAtRoot = folder.path === "" || folder.path === "/";
+
+		// 添加根目录选项（如果不在根目录且搜索词匹配）
+		if (!isAtRoot && (!lowerSearch || "~".contains(lowerSearch))) {
+			items.push({
+				file: vaultRoot,
+				displayPath: "~/",
+				insertPath: "~/",
+				isFolder: true,
+			});
+		}
+
+		// 添加父目录选项（如果有父目录且搜索词匹配）
+		if (folder.parent && (!lowerSearch || "..".contains(lowerSearch))) {
+			items.push({
+				file: folder.parent,
+				displayPath: "../",
+				insertPath: pathPrefix + "../",
+				isFolder: true,
+			});
+		}
 
 		for (const child of folder.children) {
 			const name = child.name;
@@ -259,7 +294,16 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	}
 
 	renderSuggestion(item: SuggestionItem, el: HTMLElement): void {
-		const icon = item.isFolder ? "📁 " : "📄 ";
+		let icon: string;
+		if (item.displayPath === "~/") {
+			icon = "🏠 ";
+		} else if (item.displayPath === "../") {
+			icon = "⬆️ ";
+		} else if (item.isFolder) {
+			icon = "📁 ";
+		} else {
+			icon = "📄 ";
+		}
 		el.createEl("div", { text: icon + item.displayPath });
 	}
 }
