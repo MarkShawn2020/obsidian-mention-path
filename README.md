@@ -22,7 +22,7 @@ Quickly insert relative file and folder paths while writing in Obsidian using a 
 
 ### Manual Installation
 
-1. Download `main.js`, `manifest.json`, `styles.css` from the [releases page](https://github.com/MarkShawn2020/slash-snippets-plugin/releases)
+1. Download `main.js`, `manifest.json`, `styles.css` from the [releases page](https://github.com/MarkShawn2020/obsidian-mention-path/releases)
 2. Create folder `.obsidian/plugins/mention-path/` in your vault
 3. Copy downloaded files into the folder
 4. Reload Obsidian
@@ -30,7 +30,7 @@ Quickly insert relative file and folder paths while writing in Obsidian using a 
 
 ### BRAT
 
-Install via [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) using: `MarkShawn2020/slash-snippets-plugin`
+Install via [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) using: `MarkShawn2020/obsidian-mention-path`
 
 ## Settings
 
