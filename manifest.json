@@ -1,10 +1,10 @@
 {
-	"id": "slash-snippets",
-	"name": "Slash snippets",
-	"version": "1.0.13",
+	"id": "mention-path",
+	"name": "Mention Path",
+	"version": "2.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Use slash command to insert quick text",
-	"author": "echo-saurav",
-	"authorUrl": "https://github.com/echo-saurav",
+	"description": "Use @ to quickly insert relative file/folder paths",
+	"author": "MarkShawn2020",
+	"authorUrl": "https://github.com/MarkShawn2020",
 	"isDesktopOnly": false
 }

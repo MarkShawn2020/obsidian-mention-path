@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Obsidian community plugin for quick text snippet insertion via customizable trigger character (default `/`). Single-file architecture (~250 lines TypeScript).
+Obsidian plugin for inserting relative file/folder paths via customizable trigger character (default `@`). Single-file architecture (~220 lines TypeScript).
 
 ## Commands
 
@@ -18,25 +18,33 @@ npm run version  # Bump versions in manifest.json + versions.json
 
 All code lives in `main.ts` with three classes:
 
-1. **SlashSnippetPlugin** - Plugin lifecycle, loads/saves settings, registers EditorSuggest
-2. **SlashSuggestions** - EditorSuggest implementation for autocomplete. Searches vault for `.md` files in configured folder, handles insertion + optional Templater integration
-3. **SlashSnippetSettingTab** - Settings UI (trigger char, snippet path, ignore properties, templater support)
+1. **MentionPlugin** - Plugin lifecycle, loads/saves settings, registers EditorSuggest
+2. **MentionSuggestions** - EditorSuggest implementation for autocomplete. Shows files/folders relative to current file, supports `../` navigation
+3. **MentionSettingTab** - Settings UI (trigger character only)
 
 ### Settings Interface
 ```typescript
-interface SlashSnippetSettings {
-  slashTrigger: string;        // Single character trigger
-  snippetPath: string;         // Folder containing snippets
-  ignoreProperties: boolean;   // Strip YAML frontmatter
-  templaterSupport: boolean;   // Run Templater after insertion
+interface MentionSettings {
+  trigger: string;  // Single character trigger (default "@")
+}
+```
+
+### SuggestionItem Interface
+```typescript
+interface SuggestionItem {
+  file: TAbstractFile;
+  displayPath: string;  // Shown in suggestion popup
+  insertPath: string;   // Inserted into document
+  isFolder: boolean;
 }
 ```
 
 ## Key Implementation Details
 
-- **Snippet matching**: Case-insensitive filename search filtered by folder path
-- **Frontmatter removal**: Regex `/^---\n[\s\S]*?\n---\n?/`
-- **Templater execution**: 300ms debounce via `executeCommandById('templater-obsidian:replace-in-file-templater')`
+- **Path parsing**: Supports `../` (parent) and `./` (current) navigation
+- **Folder selection**: Selecting a folder continues browsing (doesn't close popup)
+- **File selection**: Selecting a file inserts relative path and closes popup
+- **Sorting**: Folders first, then alphabetical
 - **External deps**: esbuild marks `obsidian`, `@codemirror/*`, `@lezer/*` as external
 
 ## Development
