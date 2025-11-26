@@ -39,6 +39,14 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 	constructor(plugin: MentionPlugin) {
 		super(plugin.app);
 		this.plugin = plugin;
+
+		// 添加品牌标识
+		this.suggestEl.addClass("mention-path-suggest");
+		const brand = this.suggestEl.createEl("div", {
+			cls: "mention-path-brand",
+			text: "powered by markshawn2020/obsidian-mention-path"
+		});
+		brand.style.cssText = "padding:4px 8px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--background-modifier-border);text-align:right;";
 	}
 
 	close(): void {
