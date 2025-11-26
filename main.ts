@@ -109,6 +109,20 @@ class MentionSuggestions extends EditorSuggest<SuggestionItem> {
 			return [];
 		}
 
+		// 检查是否精确匹配一个文件（不是文件夹）
+		if (searchName) {
+			for (const child of targetFolder.children) {
+				if (child.name === searchName && child instanceof TFile) {
+					// 精确匹配到文件，关闭候选
+					console.log("[MentionPath] exact file match, closing:", searchName);
+					this.savedContext = null;
+					this.preventClose = false;
+					this.close();
+					return [];
+				}
+			}
+		}
+
 		// 获取当前文件夹的直接子项
 		const directItems = this.getItemsInFolder(targetFolder, searchName, query);
 
