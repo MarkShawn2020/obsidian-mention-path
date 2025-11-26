@@ -2,7 +2,7 @@
 
 Quickly insert relative file and folder paths while writing in Obsidian using a customizable trigger character (default `@`).
 
-![demo](./assets/demo-video.gif)
+![demo](./assets/demo.gif)
 
 ## Features
 
