@@ -1,58 +1,67 @@
-# Mention Path
+<p align="center">
+  <img src="docs/images/cover.png" alt="Mention Path Cover" width="100%">
+</p>
 
-Quickly insert relative file and folder paths while writing in Obsidian using a customizable trigger character (default `@`).
+<h1 align="center">
+  <img src="assets/logo.svg" width="32" height="32" alt="Logo" align="top">
+  Mention Path
+</h1>
+
+<p align="center">
+  <strong>Quickly insert relative file and folder paths in Obsidian using @ trigger</strong><br>
+  <sub>Obsidian Plugin</sub>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#settings">Settings</a>
+</p>
+
+---
 
 ![demo](./assets/demo.gif)
 
 ## Features
 
-### 1. Trigger-based Autocomplete
-Type `@` (or your custom trigger) to instantly activate file/folder suggestions. The trigger only activates after whitespace or at line start, preventing false triggers mid-word.
-
-### 2. Parent Directory Navigation (`../`)
-Use `../` to navigate up to parent directories. Supports chaining like `../../` for multi-level navigation.
-
-### 3. Vault Root Quick Access (`~/`)
-Type `~/` to jump directly to your vault root, then browse from there.
-
-### 4. Folder Drill-down
-Selecting a folder doesn't close the popup—it navigates into that folder, allowing continuous browsing until you find the target file.
-
-### 5. Recursive Search
-When typing a search term without path separators, the plugin searches recursively through all subdirectories, showing matches with their relative paths.
-
-### 6. Smart Sorting
-Results are sorted intelligently: special directories (`~/`, `../`) first, then folders, then files—all alphabetically within each group. Shallower paths appear before deeper ones.
-
-### 7. Relative Path Insertion
-Selected files are inserted as relative paths from your current file's location, making links portable and refactor-friendly.
-
-### 8. Customizable Trigger Character
-Change the default `@` trigger to any single character you prefer in settings.
+| Feature | Description |
+|---------|-------------|
+| **Trigger-based Autocomplete** | Type `@` to instantly activate suggestions. Only triggers after whitespace or at line start. |
+| **Parent Navigation (`../`)** | Navigate up to parent directories. Supports chaining like `../../`. |
+| **Vault Root (`~/`)** | Jump directly to vault root with `~/`, then browse from there. |
+| **Folder Drill-down** | Selecting a folder navigates into it instead of closing the popup. |
+| **Recursive Search** | Search without `/` to find matches across all subdirectories. |
+| **Smart Sorting** | Special dirs first (`~/`, `../`), then folders, then files. Shallower paths appear first. |
+| **Relative Paths** | Inserted paths are relative to current file, making links portable. |
+| **Custom Trigger** | Change the default `@` to any single character in settings. |
 
 ## Usage
 
-1. Type `@` (or your configured trigger) anywhere in a note
-2. Start typing to filter files/folders in the current directory
-3. Use `../` to navigate to parent directories
-4. Select a folder to continue browsing, or select a file to insert its relative path
+1. Type `@` anywhere in a note
+2. Start typing to filter files/folders
+3. Use `../` or `~/` for directory navigation
+4. Select folder to drill down, or file to insert path
 
 ## Installation
 
-### Manual Installation
+### Manual
 
-1. Download `main.js`, `manifest.json`, `styles.css` from the [releases page](https://github.com/MarkShawn2020/obsidian-mention-path/releases)
-2. Create folder `.obsidian/plugins/mention-path/` in your vault
+1. Download `main.js`, `manifest.json`, `styles.css` from [releases](https://github.com/MarkShawn2020/obsidian-mention-path/releases)
+2. Create `.obsidian/plugins/mention-path/` in your vault
 3. Copy downloaded files into the folder
-4. Reload Obsidian
-5. Enable the plugin in Settings -> Community Plugins
+4. Reload Obsidian and enable in Settings → Community Plugins
 
 ### BRAT
 
-Install via [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) using: `MarkShawn2020/obsidian-mention-path`
+Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat): `MarkShawn2020/obsidian-mention-path`
 
 ## Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Trigger character | Character that activates path suggestions | `@` |
+
+## License
+
+MIT
